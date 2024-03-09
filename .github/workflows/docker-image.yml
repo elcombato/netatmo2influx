@@ -11,8 +11,22 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag elcombato/netatmo2influx:$(date +%s)
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Docker Login
+      uses: docker/login-action@v3.0.0
+      with:
+        registry: https://ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Build and push Docker images
+      uses: docker/build-push-action@v5.2.0
+      with:
+        push: true
+        tags: ghcr.io/elcombato/netatmo2influx:latest
