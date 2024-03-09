@@ -1,11 +1,11 @@
 # run
 ## prerequisites
-* `.env` file with
-  * INFLUX_URL
-  * INFLUX_ORG
-  * INFLUX_BUCKET
-  * INFLUX_TOKEN
-* `.netatmo.credentials` file in home directory
+* file `./.env` defining:
+  * `INFLUX_URL`
+  * `INFLUX_ORG`
+  * `INFLUX_BUCKET`
+  * `INFLUX_TOKEN`
+* file `~/.netatmo.credentials`
 
 ## local
 ```bash
@@ -17,7 +17,11 @@ pipenv run python src/main.py
 ```bash
 pipenv install
 pipenv requirements > requirements.txt
-cp ~/.netatmo.credentials .
 docker build -t netatmo2influx .
-docker run --rm --env-file .env netatmo2influx 
+docker run \
+  --env-file .env \
+  -v ~/.netatmo.credentials:/root/.netatmo.credentials:ro \
+  --name netatmo2influx \
+  netatmo2influx:latest
+docker start -a netatmo2influx
 ```
