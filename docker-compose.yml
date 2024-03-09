@@ -1,0 +1,11 @@
+version: '3.6'
+
+services:
+  netatmo2influx:
+    container_name: netatmo2influx
+    image: ghcr.io/elcombato/netatmo2influx:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+    - $HOME/.netatmo.credentials:/root/.netatmo.credentials:ro
