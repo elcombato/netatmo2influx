@@ -1,4 +1,7 @@
+"""Continously write mesaurements from Netatmo to InfluxDB
+"""
 import os
+from time import sleep
 from datetime import datetime
 import logging
 import pytz
@@ -6,14 +9,13 @@ import lnetatmo
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-if __name__ == "__main__":
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S %Z",
-    )
+def read_netatmo() -> dict:
+    """Read latest measurement via Netatmo API
 
+    Returns:
+        dict: Netatmo measurement
+    """
     auth = lnetatmo.ClientAuth()
     weather_data = lnetatmo.WeatherStationData(auth)
     latest_data = weather_data.lastData()
@@ -24,7 +26,15 @@ if __name__ == "__main__":
         for st_name, st_data in weather_data.stations.items()
     ]
     logging.info("\n".join(station_info))
+    return latest_data
 
+
+def write_influxdb(netatmo_measure: dict):
+    """Write Netatmo Measurement to InfluxDB
+
+    Args:
+        netatmo_measure (dict): Netatmo measurement
+    """
     influx_url = os.getenv("INFLUX_URL")
     influx_token = os.getenv("INFLUX_TOKEN")
     influx_org = os.getenv("INFLUX_ORG")
@@ -39,7 +49,7 @@ if __name__ == "__main__":
 
     tz = pytz.timezone("Europe/Berlin")
     record_list = []
-    for room, r_d in latest_data.items():
+    for room, r_d in netatmo_measure.items():
         timestamp = datetime.fromtimestamp(r_d["When"], tz=tz)
         logging.info(" - %s: %s", str.rjust(room, 12), timestamp)
         for measure, value in r_d.items():
@@ -53,3 +63,21 @@ if __name__ == "__main__":
     write_api = client.write_api(write_options=SYNCHRONOUS)
     write_api.write(bucket=influx_bucket, record=record_list)
     client.close()
+
+
+if __name__ == "__main__":
+
+    # interval between Netatmo queries in _minutes_
+    INTERVAL = 5
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S %Z",
+    )
+    try:
+        while True:
+            measurement = read_netatmo()
+            write_influxdb(measurement)
+            sleep(INTERVAL*60)
+    except KeyboardInterrupt:
+        logging.warning('Interrupted')
