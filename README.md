@@ -5,6 +5,7 @@
   * `INFLUX_ORG`
   * `INFLUX_BUCKET`
   * `INFLUX_TOKEN`
+  * `READ_INTERVAL`
 * file `~/.netatmo.credentials`
 
 ## local

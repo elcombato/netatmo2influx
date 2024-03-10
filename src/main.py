@@ -12,7 +12,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 
 
 # interval between Netatmo queries in _minutes_
-READ_INTERVAL = 10
+READ_INTERVAL = int(os.getenv("READ_INTERVAL"))
 NETATMO_TYPES = [
     "temperature",
     "humidity",
