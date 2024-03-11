@@ -8,4 +8,4 @@ services:
     env_file:
       - .env
     volumes:
-    - $HOME/.netatmo.credentials:/root/.netatmo.credentials:ro
+    - $HOME/.netatmo.credentials:/root/.netatmo.credentials
