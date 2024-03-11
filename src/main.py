@@ -37,7 +37,7 @@ def get_netatmo_data() -> lnetatmo.WeatherStationData:
 
     logging.info("Reading from Netatmo station(s):")
     station_info = [
-        f" - {st_name} in {st_data['place']['city']}"
+        f"  {st_name} in {st_data['place']['city']}"
         for st_name, st_data in data.stations.items()
     ]
     logging.info("\n".join(station_info))
@@ -59,7 +59,7 @@ def netatmo2influx_single(weather_data: lnetatmo.WeatherStationData) -> list:
     record_list = []
     for room, r_d in measurement.items():
         timestamp = datetime.fromtimestamp(r_d["When"], tz=TZ)
-        logging.info(" - %s: %s", str.rjust(room, 12), timestamp)
+        logging.info("  %s: %s", str.rjust(room, 12), timestamp)
         for measure, value in r_d.items():
             if measure == "When":
                 continue
@@ -91,7 +91,7 @@ def __read_module(
         if str.lower(m) in NETATMO_TYPES
     ]
 
-    logging.info("   - %s: %s", module["module_name"], m_types)
+    logging.info("    %s: %s", module["module_name"], m_types)
 
     # measurements of module
     record_list = []
@@ -106,6 +106,9 @@ def __read_module(
             date_end=int(datetime.now().timestamp()),
         )
 
+        if measure is None:
+            logging.info("      Measurement is `None` for %s", m_type)
+            continue
         if len(measure["body"]) == 0:
             logging.info("      No data for %s", m_type)
             continue
@@ -170,7 +173,7 @@ def write_influxdb(record_list: list):
     influx_bucket = os.getenv("INFLUX_BUCKET")
 
     logging.info(
-        "Writing to InfluxDB bucket %s in %s (%s):",
+        "Writing to InfluxDB bucket %s in %s (%s)",
         influx_bucket,
         influx_org,
         influx_url,
