@@ -14,13 +14,13 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 # interval between Netatmo queries in _minutes_
 READ_INTERVAL = int(os.getenv("READ_INTERVAL"))
 NETATMO_TYPES = [
-    "temperature",
-    "humidity",
-    "co2",
-    "pressure",
-    "noise",
-    "rain",
-    "windstrength",
+    "temperature",  # °C
+    "humidity",  # %
+    "co2",  # ppm
+    "pressure",  # bar
+    "noise",  # db
+    "rain",  # mm
+    "windstrength",  # km/h, °
 ]
 TZ = pytz.timezone("Europe/Berlin")
 
@@ -65,11 +65,7 @@ def netatmo2influx_single(weather_data: lnetatmo.WeatherStationData) -> list:
                 continue
             elif isinstance(value, str):
                 continue
-            record_list.append(
-                Point(room)
-                .field(measure, float(value))
-                .time(timestamp)
-            )
+            record_list.append(Point(room).field(measure, float(value)).time(timestamp))
 
     return record_list
 
