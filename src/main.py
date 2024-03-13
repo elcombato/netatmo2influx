@@ -3,7 +3,7 @@
 
 import os
 from time import sleep
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 import pytz
 import lnetatmo
@@ -23,6 +23,35 @@ NETATMO_TYPES = [
     "windstrength",  # km/h, °
 ]
 TZ = pytz.timezone("Europe/Berlin")
+
+
+def connect_to_influxdb():
+    influx_url = os.getenv("INFLUX_URL")
+    influx_token = os.getenv("INFLUX_TOKEN")
+    influx_org = os.getenv("INFLUX_ORG")
+
+    client = InfluxDBClient(url=influx_url, token=influx_token, org=influx_org)
+
+    logging.debug("Connected to InfluxDB %s (%s):", influx_url, influx_org)
+    return client
+
+
+def get_latest_timestamp(module_name, mtype):
+    influx_bucket = os.getenv("INFLUX_BUCKET")
+
+    client = connect_to_influxdb()
+    query_api = client.query_api()
+
+    tables = query_api.query(
+        f'from(bucket: "{influx_bucket}")'
+        "|> range(start: -1d)"
+        f'|> filter(fn: (r) => r["_measurement"] == "{module_name}")'
+        f'|> filter(fn: (r) => r["_field"] == "{mtype}")'
+        "|> last()"
+    )
+    client.close()
+
+    return tables[0].records[0].values["_time"]
 
 
 def get_netatmo_data() -> lnetatmo.WeatherStationData:
@@ -91,12 +120,17 @@ def __read_module(
         if str.lower(m) in NETATMO_TYPES
     ]
 
-    logging.info("    %s: %s", module["module_name"], m_types)
+    start_date = get_latest_timestamp(module["module_name"], m_types[0])
 
+    logging.info(
+        "    %s (%s): %s",
+        module["module_name"],
+        start_date.isoformat(),
+        m_types
+    )
     # measurements of module
     record_list = []
     for m_type in m_types:
-        start_date = datetime.now() - timedelta(minutes=READ_INTERVAL + 1)
         measure = weather_data.getMeasure(
             device_id=station_id,
             module_id=module["_id"],
@@ -166,23 +200,14 @@ def write_influxdb(record_list: list):
     Args:
         record_list (list): List of InfluxDB points
     """
-
-    influx_url = os.getenv("INFLUX_URL")
-    influx_token = os.getenv("INFLUX_TOKEN")
-    influx_org = os.getenv("INFLUX_ORG")
     influx_bucket = os.getenv("INFLUX_BUCKET")
 
-    logging.info(
-        "Writing to InfluxDB bucket %s in %s (%s)",
-        influx_bucket,
-        influx_org,
-        influx_url,
-    )
-
-    client = InfluxDBClient(url=influx_url, token=influx_token, org=influx_org)
+    client = connect_to_influxdb()
     write_api = client.write_api(write_options=SYNCHRONOUS)
     write_api.write(bucket=influx_bucket, record=record_list)
     client.close()
+
+    logging.info("Writing %s records to InfluxDB", len(record_list))
 
 
 if __name__ == "__main__":
