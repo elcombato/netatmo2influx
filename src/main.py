@@ -44,7 +44,7 @@ def get_latest_timestamp(module_name, mtype):
 
     tables = query_api.query(
         f'from(bucket: "{influx_bucket}")'
-        "|> range(start: -3d)"
+        "|> range(start: -5d)"
         f'|> filter(fn: (r) => r["_measurement"] == "{module_name}")'
         f'|> filter(fn: (r) => r["_field"] == "{mtype}")'
         "|> last()"
