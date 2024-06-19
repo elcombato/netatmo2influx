@@ -62,7 +62,11 @@ def get_netatmo_data() -> lnetatmo.WeatherStationData:
     """
     auth = lnetatmo.ClientAuth()
 
-    data = lnetatmo.WeatherStationData(auth)
+    try:
+        data = lnetatmo.WeatherStationData(auth)
+    except TypeError:
+        logging.exception("Reading data from Netatmo server failed:")
+        return None
 
     logging.info("Reading from Netatmo station(s):")
     station_info = [
@@ -112,7 +116,10 @@ def __read_module(
     Returns:
         list: List of InfluxDB points
     """
-
+    if "dashboard_data" not in module:
+        logging.error("No data for %s:", station_id)
+        logging.error(module)
+        return None
     # measurement types of module
     m_types = [
         str.lower(m)
@@ -184,7 +191,7 @@ def netatmo2influx_interval(weather_data: lnetatmo.WeatherStationData) -> list:
     influx_records = []
 
     for station_id in weather_data.stationIds.keys():
-        station = weather_data.stationById(station_id)
+        station = weather_data.getStation(station_id)
 
         influx_records += __read_module(station, station_id, weather_data)
 
@@ -220,6 +227,9 @@ if __name__ == "__main__":
     try:
         while True:
             netatmo_data = get_netatmo_data()
+            if netatmo_data is None:
+                sleep(120)
+                continue
             influx_data = netatmo2influx_interval(netatmo_data)
             write_influxdb(influx_data)
             sleep(READ_INTERVAL * 60)
