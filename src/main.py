@@ -196,7 +196,9 @@ def netatmo2influx_interval(weather_data: lnetatmo.WeatherStationData) -> list:
         influx_records += __read_module(station, station_id, weather_data)
 
         for module in station["modules"]:
-            influx_records += __read_module(module, station_id, weather_data)
+            module_data = __read_module(module, station_id, weather_data)
+            if module_data is not None:
+                influx_records += module_data
 
     return influx_records
 
