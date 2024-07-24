@@ -44,13 +44,15 @@ def get_latest_timestamp(module_name, mtype):
 
     tables = query_api.query(
         f'from(bucket: "{influx_bucket}")'
-        "|> range(start: -50d)"
+        "|> range(start: -30d)"
         f'|> filter(fn: (r) => r["_measurement"] == "{module_name}")'
         f'|> filter(fn: (r) => r["_field"] == "{mtype}")'
         "|> last()"
     )
     client.close()
 
+    if len(tables) == 0:
+        return
     return tables[0].records[0].values["_time"]
 
 
@@ -128,6 +130,8 @@ def __read_module(
     ]
 
     start_date = get_latest_timestamp(module["module_name"], m_types[0])
+    if start_date is None:
+        return
 
     logging.info(
         "    %s (%s): %s",
